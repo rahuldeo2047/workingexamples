@@ -92,17 +92,31 @@
 
 //both libs are behaving same
 #include <PS2Mouse.h>
+
+#ifdef ESP8266
+extern "C" {
+  #include "user_interface.h"
+  #define MOUSE_DATA D3 //5
+  #define MOUSE_CLOCK D4 //6
+}
+#else
+
 #define MOUSE_DATA 5
 #define MOUSE_CLOCK 6
 
-PS2Mouse mouse(MOUSE_CLOCK, MOUSE_DATA, STREAM);
+#endif
 
+PS2Mouse mouse(MOUSE_CLOCK, MOUSE_DATA, STREAM);
 
 void setup()
 {
 
   Serial.begin(115200);
   Serial.print("hello");
+
+#ifdef ESP8266
+  ESP.wdtEnable(20000);
+#endif
 
   // initialize LED digital pin as an output.
   //pinMode(LED_BUILTIN, OUTPUT);
@@ -127,12 +141,12 @@ void loop()
   //delay(100);
 
 
-  int data[2];
+  int16_t data[3];
   mouse.report(data);
 
-  char mstat = data[0];
-  char mx = data[1];
-  char my = data[2];
+  int mstat = data[0];
+  int mx = (unsigned int)data[1];
+  int my = (unsigned int)data[2];
   static int mx_tot;
   static int my_tot;
   float ds ;
@@ -151,6 +165,13 @@ void loop()
     ds = sqrtf(mx_tot*mx_tot + my_tot*my_tot);
   }
   /* send the data back up */
+
+  #ifdef ESP8266
+
+  Serial.printf("M1 st=0x%x\tX=%d\tY=%d\tTX=%d\tTY=%d", mstat, mx, my, mx_tot, my_tot);
+
+  #else
+  Serial.print("M1 ");
   Serial.print(mstat, BIN);
   Serial.print("\tX=");
   Serial.print(mx, DEC);
@@ -158,15 +179,17 @@ void loop()
   Serial.print(my, DEC);
 
   Serial.print("\ttX=");
-  Serial.print(mx_tot, DEC);
+  Serial.print((int)mx_tot, DEC);
   Serial.print("\ttY=");
-  Serial.print(my_tot, DEC);
+  Serial.print((int)my_tot, DEC);
+
+  #endif //#ifdef ESP8266
 
   Serial.print("\tds=");
   Serial.print(ds,5);
 
   Serial.println();
-  delay(10);
+  delay(200);
 
   //Serial.println();
 }
